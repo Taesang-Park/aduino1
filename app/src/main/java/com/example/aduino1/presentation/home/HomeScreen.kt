@@ -26,12 +26,17 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {},
+    onNavigateToStatistics: () -> Unit = {}
 ) {
     val connectionState by viewModel.connectionState.collectAsState()
     val currentWeight by viewModel.currentWeight.collectAsState()
     val todayIntake by viewModel.todayIntake.collectAsState()
     val connectedDeviceName by viewModel.connectedDeviceName.collectAsState()
+    val currentInterval by viewModel.currentInterval.collectAsState()
+    val settings by viewModel.settings.collectAsState()
 
     var showDeviceDialog by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -73,7 +78,12 @@ fun HomeScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                ),
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "설정")
+                    }
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -103,10 +113,24 @@ fun HomeScreen(
             // 현재 무게 카드
             CurrentWeightCard(currentWeight = currentWeight)
 
+            // 현재 구간 정보 카드
+            currentInterval?.let { interval ->
+                IntervalInfoCard(
+                    interval = interval,
+                    settings = settings
+                )
+            }
+
             // 오늘의 섭취량 카드
             TodayIntakeCard(
                 intake = todayIntake,
                 onAddClick = { showAddDialog = true }
+            )
+
+            // 네비게이션 버튼들
+            NavigationButtons(
+                onHistoryClick = onNavigateToHistory,
+                onStatisticsClick = onNavigateToStatistics
             )
         }
     }
@@ -429,4 +453,116 @@ fun AddWaterDialog(
             }
         }
     )
+}
+
+/**
+ * 현재 구간 정보 카드
+ */
+@Composable
+fun IntervalInfoCard(
+    interval: com.example.aduino1.domain.model.HydrationInterval,
+    settings: com.example.aduino1.domain.model.HydrationSettings
+) {
+    val ledColor = when (interval.ledColor) {
+        com.example.aduino1.domain.model.LedColorCommand.RED -> androidx.compose.ui.graphics.Color.Red
+        com.example.aduino1.domain.model.LedColorCommand.YELLOW -> androidx.compose.ui.graphics.Color(0xFFFFA500)
+        com.example.aduino1.domain.model.LedColorCommand.BLUE -> androidx.compose.ui.graphics.Color.Blue
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${interval.intervalNumber}번째 구간",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Surface(
+                    color = ledColor.copy(alpha = 0.3f),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        text = interval.ledColor.displayName,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = ledColor
+                    )
+                }
+            }
+
+            // 진행률
+            LinearProgressIndicator(
+                progress = { interval.achievementRate.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${interval.currentAmount} / ${interval.goalAmount} ml",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "%.1f%%".format(interval.achievementPercent),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = ledColor
+                )
+            }
+
+            // 남은 시간
+            Text(
+                text = interval.getRemainingTimeString(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+        }
+    }
+}
+
+/**
+ * 네비게이션 버튼들
+ */
+@Composable
+fun NavigationButtons(
+    onHistoryClick: () -> Unit,
+    onStatisticsClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedButton(
+            onClick = onHistoryClick,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(Icons.Default.Info, contentDescription = null)
+            Spacer(Modifier.width(4.dp))
+            Text("기록")
+        }
+
+        OutlinedButton(
+            onClick = onStatisticsClick,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(Icons.Default.DateRange, contentDescription = null)
+            Spacer(Modifier.width(4.dp))
+            Text("통계")
+        }
+    }
 }

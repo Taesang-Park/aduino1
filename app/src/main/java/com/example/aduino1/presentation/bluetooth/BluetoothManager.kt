@@ -11,6 +11,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import com.example.aduino1.domain.model.BluetoothConnectionState
+import com.example.aduino1.domain.model.LedColorCommand
 import com.example.aduino1.domain.model.SensorData
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -288,6 +289,29 @@ class BluetoothManager(private val context: Context) {
      */
     suspend fun sendResetCommand() {
         sendCommand("R")
+    }
+
+    /**
+     * RGB LED 색상 명령 전송
+     * @param color LED 색상 (RED, YELLOW, BLUE)
+     */
+    suspend fun sendColorCommand(color: LedColorCommand) {
+        val command = color.toCommand()  // "C:0", "C:1", "C:2"
+        sendCommand(command)
+        Log.d(TAG, "Sent LED color command: $command (${color.displayName})")
+    }
+
+    /**
+     * RGB LED 색상 명령 전송 (코드로)
+     * @param colorCode 0 (RED), 1 (YELLOW), 2 (BLUE)
+     */
+    suspend fun sendColorCommandByCode(colorCode: Int) {
+        val color = LedColorCommand.fromCode(colorCode)
+        if (color != null) {
+            sendColorCommand(color)
+        } else {
+            Log.w(TAG, "Invalid color code: $colorCode")
+        }
     }
 
     /**

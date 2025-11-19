@@ -15,6 +15,11 @@
 #define BT_RX_PIN  10  // HC-05/06 TXD 연결
 #define BT_TX_PIN  11  // HC-05/06 RXD 연결
 
+// ========== RGB LED 핀 설정 ==========
+#define LED_RED_PIN    9   // RGB LED Red 핀
+#define LED_GREEN_PIN  6   // RGB LED Green 핀
+#define LED_BLUE_PIN   5   // RGB LED Blue 핀
+
 // ========== 캘리브레이션 설정 ==========
 // 주의: 이 값은 사용하는 로드셀에 따라 다릅니다!
 // 캘리브레이션 방법:
@@ -45,6 +50,7 @@
 // 앱 -> 아두이노
 #define CMD_TARE          "T"     // 영점 조정
 #define CMD_RESET         "R"     // 리셋
-#define CMD_CALIBRATE     "C"     // 캘리브레이션 모드
+#define CMD_LED_COLOR     "C:"    // RGB LED 색상 제어 (C:0, C:1, C:2)
+#define CMD_CALIBRATE     "CAL"   // 캘리브레이션 모드
 
 #endif

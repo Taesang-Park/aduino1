@@ -1,5 +1,6 @@
 package com.example.aduino1.data.repository
 
+import com.example.aduino1.data.local.database.HourlyIntake
 import com.example.aduino1.data.local.database.WaterDao
 import com.example.aduino1.data.local.entity.WaterRecord
 import com.example.aduino1.domain.model.DailyWaterIntake
@@ -19,6 +20,22 @@ class WaterRepository(private val waterDao: WaterDao) {
      */
     suspend fun addWaterRecord(amount: Int): Long {
         val record = WaterRecord(amount = amount)
+        return waterDao.insert(record)
+    }
+
+    /**
+     * 수동으로 기록 추가 (타임스탬프 지정)
+     */
+    suspend fun addManualRecord(amount: Int, timestamp: Long): Long {
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = timestamp
+        val date = formatDate(calendar.time)
+
+        val record = WaterRecord(
+            amount = amount,
+            timestamp = timestamp,
+            date = date
+        )
         return waterDao.insert(record)
     }
 
@@ -133,6 +150,43 @@ class WaterRepository(private val waterDao: WaterDao) {
      */
     suspend fun getRecordCount(): Int {
         return waterDao.getRecordCount()
+    }
+
+    /**
+     * 특정 시간 구간의 섭취량 조회 (intervalNumber별)
+     * @param date 날짜 (yyyy-MM-dd)
+     * @param intervals 구간 리스트 (startTime, endTime 포함)
+     * @return 구간 번호 -> (섭취량, 기록 수) 맵
+     */
+    suspend fun getIntakeByInterval(
+        date: String,
+        intervals: List<Pair<Long, Long>>
+    ): Map<Int, Pair<Int, Int>> {
+        val result = mutableMapOf<Int, Pair<Int, Int>>()
+
+        intervals.forEachIndexed { index, (startTime, endTime) ->
+            val records = waterDao.getRecordsByTimestampRange(startTime, endTime)
+            val totalAmount = records.sumOf { it.amount }
+            val recordCount = records.size
+            result[index + 1] = Pair(totalAmount, recordCount)
+        }
+
+        return result
+    }
+
+    /**
+     * 특정 날짜의 시간별 섭취량 조회
+     * @param date 날짜 (yyyy-MM-dd)
+     * @return 시간(0-23) -> 섭취량(ml) 맵 (24시간 전체, 없는 시간은 0)
+     */
+    suspend fun getHourlyIntake(date: String): Map<Int, Int> {
+        val hourlyData = waterDao.getHourlyIntakeByDate(date)
+        val hourlyMap = hourlyData.associate { it.hour to it.total }
+
+        // 24시간 전체를 0으로 초기화하고 데이터가 있는 시간만 업데이트
+        return (0..23).associateWith { hour ->
+            hourlyMap[hour] ?: 0
+        }
     }
 
     companion object {

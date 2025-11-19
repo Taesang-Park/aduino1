@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.aduino1.data.local.dao.SettingsDao
+import com.example.aduino1.data.local.entity.HydrationSettingsEntity
 import com.example.aduino1.data.local.entity.WaterRecord
 
 /**
@@ -11,13 +13,17 @@ import com.example.aduino1.data.local.entity.WaterRecord
  * Room 데이터베이스 클래스
  */
 @Database(
-    entities = [WaterRecord::class],
-    version = 1,
+    entities = [
+        WaterRecord::class,
+        HydrationSettingsEntity::class
+    ],
+    version = 2,
     exportSchema = false
 )
 abstract class WaterDatabase : RoomDatabase() {
 
     abstract fun waterDao(): WaterDao
+    abstract fun settingsDao(): SettingsDao
 
     companion object {
         @Volatile

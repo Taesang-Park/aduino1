@@ -124,6 +124,27 @@ interface WaterDao {
      */
     @Query("SELECT COALESCE(AVG(daily_total), 0) FROM (SELECT date, SUM(amount) as daily_total FROM water_records GROUP BY date)")
     suspend fun getAverageDailyIntake(): Float
+
+    /**
+     * 특정 시간 범위 내의 기록 조회 (타임스탬프 기준)
+     */
+    @Query("SELECT * FROM water_records WHERE timestamp >= :startTimestamp AND timestamp < :endTimestamp ORDER BY timestamp DESC")
+    suspend fun getRecordsByTimestampRange(startTimestamp: Long, endTimestamp: Long): List<WaterRecord>
+
+    /**
+     * 특정 날짜의 시간별 섭취량 집계
+     * @return 시간(0-23)과 해당 시간의 총 섭취량 맵
+     */
+    @Query("""
+        SELECT
+            CAST(strftime('%H', timestamp / 1000, 'unixepoch', 'localtime') AS INTEGER) as hour,
+            COALESCE(SUM(amount), 0) as total
+        FROM water_records
+        WHERE date = :date
+        GROUP BY hour
+        ORDER BY hour ASC
+    """)
+    suspend fun getHourlyIntakeByDate(date: String): List<HourlyIntake>
 }
 
 /**
@@ -132,4 +153,12 @@ interface WaterDao {
 data class DailyTotal(
     val date: String,
     val total: Int
+)
+
+/**
+ * 시간별 섭취량 데이터 클래스
+ */
+data class HourlyIntake(
+    val hour: Int,      // 0-23
+    val total: Int      // ml
 )

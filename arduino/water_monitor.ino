@@ -39,12 +39,14 @@ bool cupDetected = false;
 // ========== 함수 선언 ==========
 void setupScale();
 void setupBluetooth();
+void setupRgbLed();
 float readWeight();
 float getAverageWeight();
 void processBluetothCommand();
 void sendWeight(float weight);
 void sendDrinkAmount(float amount);
 void sendStatus(const char* message);
+void setRgbLed(int colorCode);
 void tare();
 void resetSystem();
 void debugPrint(const char* message);
@@ -62,6 +64,9 @@ void setup() {
 
   // 블루투스 초기화
   setupBluetooth();
+
+  // RGB LED 초기화
+  setupRgbLed();
 
   // 시스템 준비 완료
   debugPrint("System ready!");
@@ -172,6 +177,20 @@ void setupBluetooth() {
   debugPrint("Bluetooth ready!");
 }
 
+// ========== RGB LED 초기화 ==========
+void setupRgbLed() {
+  debugPrint("Initializing RGB LED...");
+
+  pinMode(LED_RED_PIN, OUTPUT);
+  pinMode(LED_GREEN_PIN, OUTPUT);
+  pinMode(LED_BLUE_PIN, OUTPUT);
+
+  // 초기 상태: RED (목표 미달성)
+  setRgbLed(0);
+
+  debugPrint("RGB LED ready!");
+}
+
 // ========== 무게 읽기 ==========
 float readWeight() {
   if (!scale.is_ready()) {
@@ -233,6 +252,17 @@ void processBluetothCommand() {
     } else if (command == CMD_RESET) {
       // 시스템 리셋
       resetSystem();
+    } else if (command.startsWith(CMD_LED_COLOR)) {
+      // RGB LED 색상 제어 (C:0, C:1, C:2)
+      int colonIndex = command.indexOf(':');
+      if (colonIndex != -1) {
+        String colorStr = command.substring(colonIndex + 1);
+        int colorCode = colorStr.toInt();
+        setRgbLed(colorCode);
+        sendStatus("LED_OK");
+      } else {
+        sendStatus("LED_ERROR");
+      }
     } else if (command == CMD_CALIBRATE) {
       // 캘리브레이션 모드 (추가 기능)
       sendStatus("CALIBRATE_MODE");
@@ -262,6 +292,42 @@ void sendStatus(const char* message) {
   // 형식: "S:READY\n"
   bluetooth.print(CMD_STATUS);
   bluetooth.println(message);
+}
+
+// ========== RGB LED 색상 설정 ==========
+void setRgbLed(int colorCode) {
+  debugPrint("Setting LED color: ");
+  debugPrintValue("Color code", colorCode);
+
+  switch (colorCode) {
+    case 0:  // RED - 섭취량 부족 (0-50%)
+      digitalWrite(LED_RED_PIN, HIGH);
+      digitalWrite(LED_GREEN_PIN, LOW);
+      digitalWrite(LED_BLUE_PIN, LOW);
+      debugPrint("LED: RED");
+      break;
+
+    case 1:  // YELLOW - 보통 (50-100%)
+      digitalWrite(LED_RED_PIN, HIGH);
+      digitalWrite(LED_GREEN_PIN, HIGH);
+      digitalWrite(LED_BLUE_PIN, LOW);
+      debugPrint("LED: YELLOW");
+      break;
+
+    case 2:  // BLUE - 충분 (100%+)
+      digitalWrite(LED_RED_PIN, LOW);
+      digitalWrite(LED_GREEN_PIN, LOW);
+      digitalWrite(LED_BLUE_PIN, HIGH);
+      debugPrint("LED: BLUE");
+      break;
+
+    default:  // 알 수 없는 코드 - LED 끄기
+      digitalWrite(LED_RED_PIN, LOW);
+      digitalWrite(LED_GREEN_PIN, LOW);
+      digitalWrite(LED_BLUE_PIN, LOW);
+      debugPrint("LED: OFF (unknown code)");
+      break;
+  }
 }
 
 // ========== 영점 조정 ==========
